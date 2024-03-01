@@ -16,10 +16,10 @@ Tarly Chat App is a real-time messaging application designed to facilitate commu
 
 ## Technologies Used
 
-- **Backend:** Python, Flask
+- **Backend:** Python, Quart
 - **Database:** PostgreSQL
-- **Frontend:** HTML, CSS, JavaScript
-- **Authentication:** JWT (JSON Web Tokens)
+- **Frontend:** HTML, Tailwind CSS, JavaScript
+- **Authentication:** JWT (JSON Web Tokens) / Email Login
 - **Real-Time Communication:** JavaScript WebSockets
 - **Deployment:** Docker, AWS, Kubernetes
 
