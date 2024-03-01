@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tarly</title>
+    <link rel="icon" href="https://tarly.gg/static/assets/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Tarly">
+    <meta property="og:description" content="Wether you need to send just one message, to create a safe space where to enjoy deep conversations or you are seeking for privacy and fun, we cover all your needs! Join now the beta, and let us know what you think.">
+    <meta property="og:image" content="https://tarly.gg/static/assets/favicon.png">
+    <meta property="og:url" content="https://tarly.gg">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+    <link href="https://tarly.gg/static/css/output.css" rel="stylesheet">
+    <script src="https://tarly.gg/node_modules/flowbite/dist/flowbite.min.js"></script>
+    <script type="module" src="https://unpkg.com/emoji-picker-element"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        var SUPER_SECRET_TOKEN = `{{ user_id }}`;
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-okaidia.min.css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Add Slick CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css" />
+    <!-- Add Slick theme CSS (optional) -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css" />
+</head>
+
+<body class="flex items-center justify-center h-screen w-screen bg-gray-100 dark:bg-gray-800">
+    <div class="flex h-full w-screen bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+        <div class="hidden md:block flex flex-col w-48 bg-gray-200 dark:bg-gray-800 text-white p-4 overflow-y-auto">
+            <div class="text-xl mb-4 text-black dark:text-white">Channels</div>
+            <ul class="space-y-1">
+                <li class="px-4 py-2 hover:bg-gray-700 cursor-pointer text-black dark:text-white"># general</li>
+                <li class="px-4 py-2 hover:bg-gray-700 cursor-pointer text-black dark:text-white"># random</li>
+                <li class="px-4 py-2 hover:bg-gray-700 cursor-pointer text-black dark:text-white"># tech-talk</li>
+                <!-- Add more channels as needed -->
+            </ul>
+        </div>
+        <div class="flex flex-col flex-grow bg-gray-300 dark:bg-gray-900 text-white">
+            <!-- Chat will be displayed here -->
+            <div class="flex items-center justify-between p-4 bg-gray-200 dark:bg-gray-700">
+                <div class="flex items-center space-x-2">
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2">
+                            <h1 id="chat-title" class="text-2xl font-bold text-black dark:text-white" contenteditable="true"># Chat Title</h1>
+                            <div class="border-l-2 border-black dark:border-white h-8 mx-2"></div>
+                            <p id="chat-description" class="text-gray-800 dark:text-gray-300 text-sm" contenteditable="true" spellcheck="false">Chat Description</p>
+                        </div>
+                    </div>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-md border-2 border-gray-300 dark:border-gray-600 text-black dark:text-white">Toggle Theme</button>
+            </div>
+            <div class="flex flex-col flex-grow p-4 overflow-y-auto">
+                <div id="message-list"></div>
+            </div>
+            <div class="relative flex flex-col gap-1 p-4 bg-gray-200 dark:bg-gray-700">
+                <div id="preview-container" class="hidden relative flex flex-col gap-4 items-left"></div>
+                <div class="relative flex items-center mb-2">
+                    <button id="image-button" class="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-upload text-black dark:text-white" viewBox="0 0 16 16">
+                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+                        </svg>
+                    </button>
+                    <input type="file" id="file-input" class="hidden" />
+                    <textarea style="resize: none;" id="message-input" type="text" class="flex-grow rounded-md border-2 bg-gray-300 dark:bg-gray-600 p-2 pr-24 pl-14 left-2 text-black dark:text-white" placeholder="Type a message..."></textarea>
+                    <button id="gif-button" class="absolute right-10 top-1/2 transform -translate-y-1/2 p-2 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-filetype-gif mr-2 text-black dark:text-white" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2H9v-1h3a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5zM3.278 13.124a1.4 1.4 0 0 0-.14-.492 1.3 1.3 0 0 0-.314-.407 1.5 1.5 0 0 0-.48-.275 1.9 1.9 0 0 0-.636-.1q-.542 0-.926.229a1.5 1.5 0 0 0-.583.632 2.1 2.1 0 0 0-.199.95v.506q0 .408.105.745.105.336.32.58.213.243.533.377.323.132.753.132.402 0 .697-.111a1.29 1.29 0 0 0 .788-.77q.097-.261.097-.551v-.797H1.717v.589h.823v.255q0 .199-.09.363a.67.67 0 0 1-.273.264 1 1 0 0 1-.457.096.87.87 0 0 1-.519-.146.9.9 0 0 1-.305-.413 1.8 1.8 0 0 1-.096-.615v-.499q0-.547.234-.85.237-.3.665-.301a1 1 0 0 1 .3.044q.136.044.236.126a.7.7 0 0 1 .17.19.8.8 0 0 1 .097.25zm1.353 2.801v-3.999H3.84v4h.79Zm1.493-1.59v1.59h-.791v-3.999H7.88v.653H6.124v1.117h1.605v.638z"/>
+                        </svg>
+                    </button>
+                    <button id="emoji-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-emoji-smile-fill hover:text-blue-500 hover:scale-110 transition-colors duration-200 text-black dark:text-white" viewBox="0 0 16 16">
+                            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16M7 6.5C7 7.328 6.552 8 6 8s-1-.672-1-1.5S5.448 5 6 5s1 .672 1 1.5M4.285 9.567a.5.5 0 0 1 .683.183A3.5 3.5 0 0 0 8 11.5a3.5 3.5 0 0 0 3.032-1.75.5.5 0 1 1 .866.5A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1-3.898-2.25.5.5 0 0 1 .183-.683M10 8c-.552 0-1-.672-1-1.5S9.448 5 10 5s1 .672 1 1.5S10.552 8 10 8"/>
+                          </svg>
+                    </button>
+                    <emoji-picker id="emoji-picker" class="absolute right-0 bottom-full mb-2 p-2" style="display: none;"></emoji-picker>
+                </div>
+                <div id="error-message" class="hidden text-red-500">You can't send an empty message, try again.</div>
+                <div id="typing-users" class="hidden text-gray-500 flex flex-row absolute bottom-0 left-4"></div>
+            </div>
+        </div>
+        <div id="sidebar" class="hidden md:block w-auto h-full bg-gray-200 dark:bg-gray-800 overflow-auto p-2">
+            <div class="p-4">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 10v2a7 7 0 01-14 0v-2m14 0a7 7 0 00-14 0v-2a7 7 0 0014 0v-2z" />
+                    </svg>
+                    <div id="online-count" class="ml-2">0 online</div>
+                </div>
+                <div id="online-users" class="mt-4">
+                    <!-- Online users will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdn.socket.io/4.2.0/socket.io.min.js"></script>
+    <script type='module' src="https://tarly.gg/static/js/_cdn/chat/chat.js"></script>
+</body>
+</html>
