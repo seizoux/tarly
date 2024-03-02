@@ -1,6 +1,6 @@
 # This file is the main file for the web server. It handles all the routes and the main server setup.
 import aiohttp
-from quart import Quart, request, redirect, session, render_template, url_for, send_file
+from quart import Quart, jsonify, request, redirect, session, render_template, url_for, send_file, Request
 from discord.ext import ipc
 import json
 import settings as _WebSettings
@@ -97,24 +97,6 @@ def make_session_permanent():
 async def home():
     return await render_template("index.html")
 
-@app.route("/test")
-@requires_authorization
-async def test():
-    user = await app.redis.get(session.get("user_id"))
-    decoded = json.loads(user.decode("utf-8"))
-    
-    return {"data": decoded['full_data']['data']}
-    
-    redis_data = await app.redis.get(f'user:{decoded['username']}:ws_id')
-    d = app.sockets.get(redis_data.decode("utf-8"))
-    if d:
-        return f"{"data": d['user']}\n\n{decoded}"
-    return {"data": "No data found."}
-
-@app.errorhandler(Unauthorized)
-async def redirect_unauthorized(e):
-    return redirect(url_for("login"))
-
 
 @app.route("/chat")
 @requires_authorization
@@ -182,7 +164,13 @@ async def callback():
 
     return redirect(url_for("home"))
 
-@app.route('/register', methods=['GET'])
-async def register():
-    # Render the registration form
-    return await render_template('register.html')
+@app.route('/auth', methods=['GET'])
+async def auth():
+    if not request.args.get('m'):
+        return await render_template('register.html')
+    
+    if request.args.get('m'):
+        if request.args.get('m') == 'login':
+            return await render_template('login.html')
+        else:
+            return jsonify({"error": "Invalid auth method"})

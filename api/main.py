@@ -21,12 +21,12 @@ import tempfile
 import settings
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = settings.EMAIL,  # Your Zoho email
-    MAIL_PASSWORD = settings.EMAIL_PASSWORD,  # Your Zoho password
+    MAIL_USERNAME = str(settings.EMAIL),  # Your Zoho email
+    MAIL_PASSWORD = str(settings.EMAIL_PASSWORD),  # Your Zoho password
     MAIL_FROM = "staff@tarly.gg",
     MAIL_FROM_NAME = "Tarly",
-    MAIL_PORT = settings.EMAIL_PORT,
-    MAIL_SERVER = settings.EMAIL_HOST,
+    MAIL_PORT = int(settings.EMAIL_PORT),
+    MAIL_SERVER = str(settings.EMAIL_HOST),
     MAIL_STARTTLS = False,
     MAIL_SSL_TLS = True,
     USE_CREDENTIALS = True,
@@ -75,6 +75,84 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
 def get_app(request: Request):
     return request.app
 
+async def send_mail(email: str, twofa: bool = False) -> dict:
+    """
+    Send a verification email to the user with the given email address.
+    
+    Parameters:
+    - email (str): The email address of the user.
+    
+    Returns:
+    - dict: A dictionary containing the message "Email sent successfully".
+    """
+    # Create a serializer
+    serializer = URLSafeTimedSerializer(_APIconst.SECRET_KEY)
+
+    # Generate a secure token
+    token = serializer.dumps(email, salt=_APIconst.SALT)
+
+    # Generate a random integer
+    code = random.randint(111111, 999999)
+
+    # Store the association between the random integer and the token in Redis
+    await app.redis.set(code, token)
+
+    if not twofa:
+        message = MessageSchema(
+            subject="Verification Code",
+            recipients=[email],  # List of recipients, as many as you can pass 
+            body=f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; background-color: #1a202c; color: #fff; display: flex; justify-content: center; align-items: center;">
+                    <div style="text-align: center; background-color: #2d3748; padding: 2em; border-radius: 0.5em; margin: auto;">
+                        <h1 style="font-size: 2em; margin-bottom: 0.5em; color: #fff; font-weight: bold;">Tarly.gg</h1>
+                        <p style="color: #718096; margin-bottom: 1em;">We're glad to have you here, let's complete your registration!</p>
+                        <h2 style="margin-bottom: 1em; color: #fff; font-weight: bold;">Verification Code</h2>
+                        <div style="background-color: #2d3748; border: 2px solid #718096; padding: 1em; border-radius: 0.375em;">
+                            <p style="font-weight: bold; font-size: 2em;">{' '.join(str(code))}</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            """,
+            subtype="html",
+            from_email=("Tarly", "staff@tarly.gg")
+        )
+    else:
+        message = MessageSchema(
+            subject="Login Attempt",
+            recipients=[email],  # List of recipients, as many as you can pass 
+            body=f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; background-color: #1a202c; color: #fff; display: flex; justify-content: center; align-items: center;">
+                    <div style="text-align: center; background-color: #2d3748; padding: 2em; border-radius: 0.5em; margin: auto;">
+                        <h1 style="font-size: 2em; margin-bottom: 0.5em; color: #fff; font-weight: bold;">New Login Attempt</h1>
+                        <p style="color: #718096; margin-bottom: 1em;">Here is your verification code. You've received this because you have 2FA enabled on your account.</p>
+                        </br>
+                        <p style="color: #718096; margin-bottom: 1em;">If you didn't request this code, it is possible that your account has been compromised.</p>
+                        </br>
+                        <p style="color: #718096; margin-bottom: 1em;">DO NOT SHARE THIS CODE WITH ANYONE.</p>
+                        <h2 style="margin-bottom: 1em; color: #fff; font-weight: bold;">Verification Code</h2>
+                        <div style="background-color: #2d3748; border: 2px solid #718096; padding: 1em; border-radius: 0.375em;">
+                            <p style="font-weight: bold; font-size: 2em;">{' '.join(str(code))}</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            """,
+            subtype="html",
+            from_email=("Tarly", "staff@tarly.gg")
+        )
+
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(message)
+    except Exception as e:
+        log.info(f"Exception: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while sending the email")
+
+    return {"message": "Email sent successfully"}
+
 class Token(BaseModel):
     token: str
 
@@ -108,6 +186,48 @@ class SnowflakeIDGenerator:
         return (timestamp << 22) | (self.worker_id << 12) | self.sequence
 
 idgen = SnowflakeIDGenerator()
+
+@app.post(f"/{_APIconst.API_VERSION}/auth/validate", include_in_schema=False)
+async def verify_mail_and_password_and_send_mail(request: Request):
+    _r = await request.json()
+    email = _r['email']
+    password = _r['password']
+    
+    _d = await app.pool.fetchrow("SELECT * FROM users WHERE email = $1", email)
+    if not _d:
+        raise HTTPException(status_code=400, detail="Invalid email.")
+    
+    if not bcrypt.checkpw(password.encode("utf-8"), _d['password'].encode("utf-8")):
+        raise HTTPException(status_code=400, detail=f"Invalid password for {email}.")
+    
+    if _d['2fa'] == True:
+        _em = await send_mail(email, twofa=True)
+        if _em == {"message": "Email sent successfully"}:
+            return {"status": "Valid email and password.", "2fa": True, "redirect": f"https://tarly.gg/app"}
+        
+    return {"status": "Valid email and password.", "2fa": False, "redirect": f"https://tarly.gg/app"}
+
+@app.post(f"/{_APIconst.API_VERSION}/auth/verify", include_in_schema=False)
+async def verify_code_and_send_token(token: int = Form(...),
+                                    email: str = Form(...)):
+        _token = await app.redis.get(token)
+        if _token is None:
+            raise HTTPException(status_code=400, detail="Invalid code.")
+        
+        serializer = URLSafeTimedSerializer(_APIconst.SECRET_KEY)
+    
+        try:
+            token = serializer.loads(_token.decode("utf-8"), salt=_APIconst.SALT, max_age=_APIconst.MAX_AGE)
+        except SignatureExpired:
+            await app.redis.delete(token)
+            raise HTTPException(status_code=400, detail="Code has expired, please request a new one.")
+        except BadTimeSignature:
+            await app.redis.delete(token)
+            raise HTTPException(status_code=400, detail="Code is invalid, please request a new one.")
+    
+        await app.redis.delete(token)
+    
+        return {"status": "Code is valid.", "token": token, "email": email, "redirect": f"https://tarly.gg/app"}
 
 @app.post(f"/{_APIconst.API_VERSION}/auth", include_in_schema=False)
 async def complete_auth(user = Header(None), 
@@ -196,48 +316,7 @@ async def register(email: str = Header(None)):
     if _d:
         raise HTTPException(status_code=400, detail={"error_text": "email_exists"})
     
-    # Create a serializer
-    serializer = URLSafeTimedSerializer(_APIconst.SECRET_KEY)
-
-    # Generate a secure token
-    token = serializer.dumps(email, salt=_APIconst.SALT)
-
-    # Generate a random integer
-    code = random.randint(111111, 999999)
-
-    # Store the association between the random integer and the token in Redis
-    await app.redis.set(code, token)
-
-    # Create message
-    message = MessageSchema(
-        subject="Verification Code",
-        recipients=[email],  # List of recipients, as many as you can pass 
-        body=f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; background-color: #1a202c; color: #fff; display: flex; justify-content: center; align-items: center;">
-                <div style="text-align: center; background-color: #2d3748; padding: 2em; border-radius: 0.5em; margin: auto;">
-                    <h1 style="font-size: 2em; margin-bottom: 0.5em; color: #fff; font-weight: bold;">Tarly.gg</h1>
-                    <p style="color: #718096; margin-bottom: 1em;">We're glad to have you here, let's complete your registration!</p>
-                    <h2 style="margin-bottom: 1em; color: #fff; font-weight: bold;">Verification Code</h2>
-                    <div style="background-color: #2d3748; border: 2px solid #718096; padding: 1em; border-radius: 0.375em;">
-                        <p style="font-weight: bold; font-size: 2em;">{' '.join(str(code))}</p>
-                    </div>
-                </div>
-            </body>
-        </html>
-        """,
-        subtype="html",
-        from_email=("Tarly", "staff@tarly.gg")
-    )
-
-    try:
-        fm = FastMail(conf)
-        await fm.send_message(message)
-    except Exception as e:
-        log.info(f"Exception: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while sending the email")
-
-    return {"message": "Email sent successfully"}
+    await send_mail(email)
 
 @app.post(f'/{_APIconst.API_VERSION}/authme/', include_in_schema=False)
 async def authme(request: Request, app: FastAPI = Depends(get_app)):

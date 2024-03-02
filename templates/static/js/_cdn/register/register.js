@@ -14,6 +14,27 @@ async function validateForm() {
     let fileInput = document.querySelector("#fileInput");
     let isValid = true;
 
+    let attemptsData = JSON.parse(localStorage.getItem("registerAttempts"));
+
+    if (attemptsData === null || attemptsData.timestamp === undefined) {
+        attemptsData = { attempts: 1, timestamp: new Date().getTime() };
+    } else {
+        let attempts = attemptsData.attempts;
+        let firstAttemptTime = attemptsData.timestamp;
+    
+        // Check if 60 seconds have passed since the first attempt
+        if (new Date().getTime() - firstAttemptTime >= 60000) {
+            attemptsData = { attempts: 1, timestamp: new Date().getTime() };
+        } else if (attempts >= 3) {
+            emailInput.nextElementSibling.textContent = "You have reached the maximum amount of attempts, try again later.";
+            return;
+        } else {
+            attemptsData.attempts++;
+        }
+    }
+    
+    localStorage.setItem("registerAttempts", JSON.stringify(attemptsData));
+
     // Check if email is valid
     let emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
     if (!emailInput.value.match(emailPattern)) {
@@ -49,16 +70,6 @@ async function validateForm() {
     }
 
     if (isValid) {
-        if (localStorage.getItem("registerAttempts") === null) {
-            localStorage.setItem("registerAttempts", 1);
-        } else {
-            let attempts = parseInt(localStorage.getItem("registerAttempts"));
-            if (attempts >= 3) {
-                emailInput.nextElementSibling.textContent = "You have reached the maximum amount of attempts.";
-                return;
-            }
-            localStorage.setItem("registerAttempts", attempts + 1);
-        }
         // Create a new FormData instance
         let formData = new FormData();
         formData.append("username", usernameInput.value);
